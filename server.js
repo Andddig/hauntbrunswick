@@ -13,13 +13,22 @@ app.use(express.json());
 
 //test comment
 // MySQL connection setup
+function requiredEnv(name) {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
+// MySQL configuration must be supplied by the deployment environment.
 const connection = mysql.createPool({
-    host: '100.87.150.78',  // 192.168.100.100
-    port: '3667',
-    user: 'valak',
-    password: 'SLEEP4tG',
-    database: 'MYSQL_DATABASE',
-    connectionLimit: 10  // Adjust as needed
+    host: requiredEnv('DB_HOST'),
+    port: Number(process.env.DB_PORT || 3306),
+    user: requiredEnv('DB_USER'),
+    password: requiredEnv('DB_PASSWORD'),
+    database: requiredEnv('DB_NAME'),
+    connectionLimit: 10
 });
 
 setInterval(() => {
@@ -37,15 +46,12 @@ connection.query('SELECT 1 + 1 AS solution', (err, results) => {
 });
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.office365.com',
-    port: 587,
-    secure: false, // Use TLS
+    host: process.env.SMTP_HOST || 'smtp.office365.com',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: false,
     auth: {
-        user: 'donotreply@hauntbrunswick.com', // Your Office 365 email
-        pass: 'vsjwbdbfhvqrvyqw' // Your Office 365 app password
-    },
-    tls: {
-        rejectUnauthorized: false // This might help if there's an issue with the certificate
+        user: requiredEnv('SMTP_USER'),
+        pass: requiredEnv('SMTP_PASSWORD')
     }
 });
 
@@ -69,7 +75,7 @@ async function sendRegistrationEmail(email, registrationNumber, timeSlot, names,
 
     // Use Nodemailer to send the email (you likely have this setup already)
     const mailOptions = {
-        from: 'donotreply@hauntbrunswick.com',
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: email,
         subject: 'Your Haunted House Registration Confirmation',
         html: emailContent,
@@ -348,7 +354,7 @@ app.post('/modify-registration', (req, res) => {
 });
 
 //ADMIN page
-const adminPassword = 'SLEEP4tG';  // Replace with your actual password
+const adminPassword = requiredEnv('ADMIN_PASSWORD');
 
 // Middleware to protect the admin route
 function checkAdminAuth(req, res, next) {
